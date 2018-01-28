@@ -22,6 +22,14 @@ And it also expects the photos to be stored in the same directory:
 
 **Note:** One improvement here could be to pass this location in as an argument to the programs below
 
+#### Requirements
+
+The following commands need to be run in order to have code run as expected:
+
+`pip install pyephem`
+`sudo apt-get install libjpeg-dev`
+`pip install pillow`
+
 #### dataRecorder.py
 
 This is the code that will run in space. To run it do the following at the command line:
