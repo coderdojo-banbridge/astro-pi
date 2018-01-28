@@ -27,7 +27,9 @@ And it also expects the photos to be stored in the same directory:
 The following commands need to be run in order to have code run as expected:
 
 `pip install pyephem`
+
 `sudo apt-get install libjpeg-dev`
+
 `pip install pillow`
 
 #### dataRecorder.py
