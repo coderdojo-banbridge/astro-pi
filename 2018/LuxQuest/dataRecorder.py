@@ -90,7 +90,7 @@ def main():
 
             photoName = resultsDirectory + timeNow + "Team LuxQuest.jpg"
 
-            cam.capture (photoName) # Take photo of Earth
+            cam.capture(photoName) # Take photo of Earth
             image = Image.open(photoName).convert('L') # convert image to monochrome
             lux = ImageStat.Stat(image).mean[0] # calculate mean brightness/lux of image
             print("Brighness of image: ", lux)
