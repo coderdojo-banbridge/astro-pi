@@ -21,7 +21,8 @@ resultsDirectory = '/home/pi/luxquestdata/'
 # Returns our initialized senseHat
 def initSenseHat():
     sense = SenseHat ()
-    sense.show_message ("Hello ISS from Team LUX Quest")
+    sense.show_message ("Hello ISS from Team LUX Quest", 0.05)
+    sense.show_message ("Our aim is to measure light pollution", 0.05)
     return sense
 
 # Creates our ISS object using Two Line Element Data
@@ -39,6 +40,21 @@ def initCamera():
     camera = picamera.PiCamera()
     camera.annotate_background = picamera.Color('black')
     camera.annotate_text_size = 50
+    ## Code below is to ensure we get consistent images
+    ## as we found during testing that the camera was adjusting
+    ## the white balance which meant results were varying for a
+    ## stable image
+    camera.iso = 800
+    camera.resolution = (640, 480)
+    camera.framerate = 30
+    # Wait for the automatic gain control to settle
+    time.sleep(2)
+    # Now fix the values
+    camera.shutter_speed = camera.exposure_speed
+    camera.exposure_mode = 'off'
+    g = camera.awb_gains
+    camera.awb_mode = 'off'
+    camera.awb_gains = g
     return camera
 
 # Create our results directory if it doesn't exist
@@ -67,45 +83,29 @@ def initCsvWriter(csvfile):
 
 # Main block of code that runs entire program
 def main():
-    startTime = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
-    print("Time this program started at {0}".format(startTime))
     senseHat = initSenseHat()
     iss = initIss()
     cam = initCamera()
     initResultsDirectory()
-
+    cam.start_preview(fullscreen=False)
+    time.sleep(2)
     with open(resultsDirectory + 'results.csv', 'w') as csvfile: # open the file for writing
         writer = initCsvWriter(csvfile)
 
         while True: # Keep looping as ESA will stop program when times runs out
             iss.compute() # Get latest position of ISS
-
-            print("Lat:\t%s\tLong:\t%s\t%s" % (iss.sublat, iss.sublong, isNight(iss)))
-
-            timeNow = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-
-            print("Time now is {0}".format(timeNow))
-
-            cam.annotate_text = timeNow # Put time on photo capture
-
-            photoName = resultsDirectory + timeNow + "Team LuxQuest.jpg"
-
-            cam.capture(photoName) # Take photo of Earth
-            image = Image.open(photoName).convert('L') # convert image to monochrome
-            lux = ImageStat.Stat(image).mean[0] # calculate mean brightness/lux of image
-            print("Brighness of image: ", lux)
-
-            writer.writerow({'time': timeNow, 'lat': iss.sublat, 'long': iss.sublat, 'photo': '/home/pi/luxquestdata/' + photoName, 'lux': lux}) # write data to the row. see use of random integers
-
+            if isNight(iss):
+                timeNow = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+                cam.annotate_text = timeNow # Put time on photo capture
+                photoName = resultsDirectory + timeNow + "LuxQuest.jpg"
+                cam.capture(photoName) # Take photo of Earth
+                image = Image.open(photoName).convert('L') # convert image to monochrome
+                lux = ImageStat.Stat(image).mean[0] # calculate mean brightness/lux of image
+                senseHat.show_message (str(int(lux)), 0.05)
+                writer.writerow({'time': timeNow, 'lat': math.degrees(iss.sublat), 'long': math.degrees(iss.sublong), 'photo': '/home/pi/luxquestdata/' + photoName, 'lux': lux})
+            else:
+                senseHat.show_message ("Daylight", 0.05)
             time.sleep(1)
-
-            # Things to do:
-            # 1) Only take photo when it is dark
-            # 2) Update photo with lux value if needed
-            # 3) Display lux value on SenseHat
-            # 4) Capture any exceptions (places where code goes wrong) so program doesn't crash
-            # 5) Figure out a good delay between photos
-            # 6) Relax and enjoy finished program
             
 # Run our awesome code!
 main()
