@@ -24,13 +24,19 @@ And it also expects the photos to be stored in the same directory:
 
 #### Requirements
 
-The following commands need to be run in order to have code run as expected:
+The following commands need to be run in order to have code run the data recorder as expected in **space**:
 
 `pip install pyephem`
 
 `sudo apt-get install libjpeg-dev`
 
 `pip install pillow`
+
+And for the modeller:
+
+`pip install geopy`
+
+`pip install pandas`
 
 #### dataRecorder.py
 
