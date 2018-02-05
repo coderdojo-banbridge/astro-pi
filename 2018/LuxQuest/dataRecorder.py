@@ -102,7 +102,7 @@ def main():
                 image = Image.open(photoName).convert('L') # convert image to monochrome
                 lux = ImageStat.Stat(image).mean[0] # calculate mean brightness/lux of image
                 senseHat.show_message (str(int(lux)), 0.05)
-                writer.writerow({'time': timeNow, 'lat': math.degrees(iss.sublat), 'long': math.degrees(iss.sublong), 'photo': '/home/pi/luxquestdata/' + photoName, 'lux': lux})
+                writer.writerow({'time': timeNow, 'lat': math.degrees(iss.sublat), 'long': math.degrees(iss.sublong), 'photo': photoName, 'lux': lux})
             else:
                 senseHat.show_message ("Daylight", 0.05)
             time.sleep(1)
