@@ -6,12 +6,9 @@ import pandas as pd
 import math
 from geopy.geocoders import Nominatim
 import pygame
+import config
 
 # Constant values
-maxStackHeight = 120
-maxRowLength = 120
-fieldnames = ['time', 'lat', 'long', 'photo', 'lux'] # Same fields we wrote to the file
-resultsDirectory = '/home/pi/luxquestdata/'
 geolocator = Nominatim()
         
 # Creates our minecraft objects and displays start message
@@ -60,14 +57,14 @@ def blockToUse(lux):
 # Creates our results reader and skips the headers from the file
 # Returns our initialized reader
 def initCsvReader(csvfile):
-    reader = csv.DictReader(csvfile, fieldnames=fieldnames)
+    reader = csv.DictReader(csvfile, fieldnames=config.Config.fieldnames)
     next(reader) # this lets us skip the header row
     return reader
 
 # Creates our results reader and skips the headers from the file
 # Returns our initialized reader
 def initPandas(csvfile):
-    df = pd.read_csv(resultsDirectory + 'results.csv')
+    df = pd.read_csv(config.Config.resultsDirectory + 'results.csv')
     return df
 
 def getLocString(lat, long):
@@ -84,41 +81,54 @@ def displayImage(imageLocation, caption):
     screen = pygame.display.set_mode((640,480))
     screen.blit(img, (0,0))
     pygame.display.flip()
+
+def calculateScale(maxValue):
+    try:
+        return math.ceil(maxValue / config.Config.maxStackHeight)
+    except Exception as ex:
+        print("Error determine scale for graph so return 1")
+        print(ex)
+        return 1
     
 # Main block of code that runs entire program
 def main():
-    try:
-        mc = initMineCraft()
-    except ConnectionRefusedError:
-        print("Issue connecting to Minecraft! Make sure Minecraft has started!")
-    else:
-        pygame.init()
-        x, y, z = mc.player.getPos()            
-        with open(resultsDirectory + 'results.csv') as csvfile:
-            reader = initCsvReader(csvfile)
-            df = initPandas(csvfile)
-            maxValue = df.ix[df.lux.idxmax(), 'lux']
-            maxLoc = getLocString(df.ix[df.lux.idxmax(), 'lat'], df.ix[df.lux.idxmax(), 'long'])
-            scale = math.ceil(maxValue / maxStackHeight)
-            minValue = df.ix[df.lux.idxmin(), 'lux']
-            minLoc = getLocString(df.ix[df.lux.idxmin(), 'lat'], df.ix[df.lux.idxmin(), 'long'])
-            print("To fit all results, we'll use a scale of " + str(scale))
-            print("Max brightness = " + str(maxValue))
-            print("Min brightness = " + str(minValue))
-            print("Average brightness = " + str(df['lux'].mean()))
-            print("Max brightness recorded at: " + maxLoc)
-            print("Min brightness recorded at: " + minLoc)
-            for row in reader:
-                lux = int(float(row['lux'])) # here we are just interested in the lux column
-                mc.postToChat('Lux value: ' + str(lux))
-                mc.setBlocks(x+1, y+1, z+1, x+1, y+(lux/scale), z+1, blockToUse(lux/scale))
-                x += 1
-                if x >= maxRowLength: # If we get to the end of the world jump
-                    x = -126          # back to the other edge and shift over 
-                    z += 5            # a few blocks before continuing
-            displayImage(df.ix[df.lux.idxmax(), 'photo'], "Brightest Image")
-            sleep(10)
-            pygame.quit()
+    mc = initMineCraft()
+    pygame.init()
+    x, y, z = mc.player.getPos()
+    with open(config.Config.resultsDirectory + 'results.csv') as csvfile:
+        reader = initCsvReader(csvfile)
+        df = initPandas(csvfile)
+        maxValue = df.ix[df.lux.idxmax(), 'lux']
+        maxLoc = getLocString(df.ix[df.lux.idxmax(), 'lat'], df.ix[df.lux.idxmax(), 'long'])
+        scale = calculateScale(maxValue)
+        minValue = df.ix[df.lux.idxmin(), 'lux']
+        minLoc = getLocString(df.ix[df.lux.idxmin(), 'lat'], df.ix[df.lux.idxmin(), 'long'])
+        mc.postToChat("To fit all results, we'll use a scale of " + str(scale))
+        mc.postToChat("Max brightness = " + str(maxValue))
+        mc.postToChat("Min brightness = " + str(minValue))
+        mc.postToChat("Average brightness = " + str(df['lux'].mean()))
+        mc.postToChat("Max brightness recorded at: " + maxLoc)
+        mc.postToChat("Min brightness recorded at: " + minLoc)
+        for row in reader:
+            lux = int(float(row['lux'])) # here we are just interested in the lux column
+            mc.setBlocks(x+1, y+1, z+1, x+1, y+(lux/scale), z+1, blockToUse(lux/scale))
+            x += 1
+            if x >= config.Config.maxRowLength: # If we get to the end of the world jump
+                x = -126          # back to the other edge and shift over 
+                z += 5            # a few blocks before continuing
+        displayImage(df.ix[df.lux.idxmax(), 'photo'], maxLoc)
+        sleep(10)
+        pygame.quit()
 
 # Run our awesome code!
-main()
+try:
+    main()
+except ConnectionRefusedError:
+    print("Issue connecting to Minecraft! Make sure Minecraft has started!")
+except Exception as ex:
+    print("Something bad happened! Exception as follows:")
+    print(ex)
+    pygame.quit()
+except KeyboardInterrupt:
+    print("User requested program end. Thank you for running our code!")
+    pygame.quit()    
