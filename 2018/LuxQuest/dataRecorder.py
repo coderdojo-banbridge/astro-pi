@@ -10,12 +10,11 @@ from PIL import ImageStat
 import csv
 import datetime as dt
 import os
+import config
 
 # Constant values
 sun = ephem.Sun()
 twilight = math.radians(-6)
-fieldnames = ['time', 'lat', 'long', 'photo', 'lux'] # the different elements we store in each row
-resultsDirectory = '/home/pi/luxquestdata/'
 
 # Creates our senseHat object and displays start message
 # Returns our initialized senseHat
@@ -29,9 +28,7 @@ def initSenseHat():
 # Returns our initialized iss
 def initIss():
     name = "ISS (ZARYA)"
-    line1 = "1 25544U 98067A   17332.28575632  .00003326  00000-0  57234-4 0  9993"
-    line2 = "2 25544  51.6431 300.2614 0004099 158.9129 343.4648 15.54248554 87274"
-    iss = ephem.readtle(name, line1, line2)
+    iss = ephem.readtle(name, config.Config.issLine1, config.Config.issLine2)
     return iss
 
 # Creates our camera object with set of default values for annotation
@@ -44,7 +41,7 @@ def initCamera():
     ## as we found during testing that the camera was adjusting
     ## the white balance which meant results were varying for a
     ## stable image
-    camera.iso = 800
+    camera.iso = config.Config.isoValue
     camera.resolution = (640, 480)
     camera.framerate = 30
     # Wait for the automatic gain control to settle
@@ -59,8 +56,8 @@ def initCamera():
 
 # Create our results directory if it doesn't exist
 def initResultsDirectory():
-    if not os.path.exists(resultsDirectory):
-        os.makedirs(resultsDirectory)
+    if not os.path.exists(config.Config.resultsDirectory):
+        os.makedirs(config.Config.resultsDirectory)
 
 # Determines if it is nighttime (True) or daytime (False) under the ISS
 # Returns a boolean
@@ -77,7 +74,7 @@ def isNight(iss):
 # Creates our results file and writes out the headers into file
 # Returns our initialized writer
 def initCsvWriter(csvfile):
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames) # create writer with fields
+    writer = csv.DictWriter(csvfile, fieldnames=config.Config.fieldnames) # create writer with fields
     writer.writeheader() # write out the fields as headers on the file so itmakes sense to us humans :D
     return writer
 
@@ -89,15 +86,14 @@ def main():
     initResultsDirectory()
     cam.start_preview(fullscreen=False)
     time.sleep(2)
-    with open(resultsDirectory + 'results.csv', 'w') as csvfile: # open the file for writing
+    with open(config.Config.resultsDirectory + 'results.csv', 'w') as csvfile: # open the file for writing
         writer = initCsvWriter(csvfile)
-
         while True: # Keep looping as ESA will stop program when times runs out
             iss.compute() # Get latest position of ISS
             if isNight(iss):
-                timeNow = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+                timeNow = time.strftime(config.Config.dateTimeFormat, time.localtime())
                 cam.annotate_text = timeNow # Put time on photo capture
-                photoName = resultsDirectory + timeNow + "LuxQuest.jpg"
+                photoName = config.Config.resultsDirectory + timeNow + "LuxQuest.jpg"
                 cam.capture(photoName) # Take photo of Earth
                 image = Image.open(photoName).convert('L') # convert image to monochrome
                 lux = ImageStat.Stat(image).mean[0] # calculate mean brightness/lux of image
@@ -105,7 +101,13 @@ def main():
                 writer.writerow({'time': timeNow, 'lat': math.degrees(iss.sublat), 'long': math.degrees(iss.sublong), 'photo': photoName, 'lux': lux})
             else:
                 senseHat.show_message ("Daylight", 0.05)
-            time.sleep(1)
+            time.sleep(config.Config.recordingLoopDelay)
             
 # Run our awesome code!
-main()
+try:
+    main()
+except Exception as ex:
+    print("Something bad happened! Exception as follows:")
+    print(ex)
+except KeyboardInterrupt:
+    print("User requested program end. Thank you for running our code!")
