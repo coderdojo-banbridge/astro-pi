@@ -49,3 +49,7 @@ This is the code that will run in space. To run it do the following at the comma
 This is the code that will when the results are returned. To run it enter the following at the command line:
 
 `python dataModeller.py`
+
+#### config.py
+
+This config class is common to both recorder and modeller and allows us to change various settings, e.g. where results are recorded/read & how long we pause between each photo. It does not needed to be run, merely be in the same directory as our recorder & modeller code. 
